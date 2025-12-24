@@ -1,0 +1,43 @@
+{
+  "setup-worktree-windows": [
+    "$coordDir = Join-Path .. '.coord-cursor'",
+    "New-Item -ItemType Directory -Path $coordDir -Force | Out-Null",
+    "$currentWorktree = (Get-Location).Path",
+    "$taskNum = 0",
+    "for ($i = 1; $i -le 8; $i++) {",
+    "  $lockDir = Join-Path $coordDir \"task-$i.lock\"",
+    "  $claimFile = Join-Path $coordDir \"task-$i.json\"",
+    "  try {",
+    "    New-Item -ItemType Directory -Path $lockDir -ErrorAction Stop | Out-Null",
+    "    if (-not (Test-Path $claimFile)) {",
+    "      $taskNum = $i",
+    "      (@{ task=$i; worktree=$currentWorktree; claimed_at=(Get-Date -Format o) } | ConvertTo-Json) | Out-File $claimFile -Encoding UTF8",
+    "      Remove-Item $lockDir -Force",
+    "      break",
+    "    }",
+    "    Remove-Item $lockDir -Force",
+    "  } catch { }",
+    "}",
+    "$taskNum | Out-File -FilePath '.agent-id' -Encoding UTF8 -NoNewline"
+  ],
+  "setup-worktree-unix": [
+    "COORD_DIR='../.coord-cursor'",
+    "mkdir -p \"$COORD_DIR\"",
+    "CURRENT_WORKTREE=\"$(pwd)\"",
+    "TASK_NUM=0",
+    "for i in 1 2 3 4 5 6 7 8; do",
+    "  LOCK_DIR=\"$COORD_DIR/task-$i.lock\"",
+    "  CLAIM_FILE=\"$COORD_DIR/task-$i.json\"",
+    "  if mkdir \"$LOCK_DIR\" 2>/dev/null; then",
+    "    if [ ! -f \"$CLAIM_FILE\" ]; then",
+    "      TASK_NUM=$i",
+    "      echo \"{\\\"task\\\":$i,\\\"worktree\\\":\\\"$CURRENT_WORKTREE\\\",\\\"claimed_at\\\":\\\"$(date -Iseconds)\\\"}\" > \"$CLAIM_FILE\"",
+    "      rmdir \"$LOCK_DIR\"",
+    "      break",
+    "    fi",
+    "    rmdir \"$LOCK_DIR\"",
+    "  fi",
+    "done",
+    "echo \"$TASK_NUM\" > .agent-id"
+  ]
+}
