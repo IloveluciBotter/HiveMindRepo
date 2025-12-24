@@ -143,3 +143,9 @@ vite.config.ts.timestamp-*
 .coord-cursor/
 .coord-cursor/**
 
+
+# Cursor worktrees
+.agent-id
+.coord-cursor/
+.coord-cursor/**
+
