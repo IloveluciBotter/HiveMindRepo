@@ -1,0 +1,111 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum RepoLearningTier {
+  INTERACTION_ONLY
+  LEARNING_ENABLED
+}
+
+model Repo {
+  id          String   @id @default(cuid())
+  ownerHandle String
+  name        String
+  description String   @default("")
+  isPublic    Boolean  @default(true)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  learningStatus RepoLearningStatus?
+  agentConfig    RepoAgentConfig?
+  threads        AgentThread[]
+  messages       AgentMessage[]
+  contentChunks  ContentChunk[]
+
+  @@unique([ownerHandle, name])
+}
+
+model RepoLearningStatus {
+  repoId            String @id
+  repo              Repo   @relation(fields: [repoId], references: [id], onDelete: Cascade)
+
+  learningTier      RepoLearningTier @default(INTERACTION_ONLY)
+  stakeAmount       Decimal          @default(0)
+  stakeLockUntil    DateTime?
+  intelScore        Decimal          @default(0)
+  intelVerified     Boolean          @default(false)
+  learningEnabledAt DateTime?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model RepoAgentConfig {
+  repoId        String @id
+  repo          Repo   @relation(fields: [repoId], references: [id], onDelete: Cascade)
+
+  agentEnabled  Boolean @default(true)
+  agentMode     String  @default("public") // public | private | draft-assistant
+  modelProvider String  @default("random_llm")
+
+  systemPrompt  String  @default("")
+  toolsAllowed  Json    @default("[]")
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model AgentThread {
+  id         String   @id @default(cuid())
+  repoId     String
+  repo       Repo     @relation(fields: [repoId], references: [id], onDelete: Cascade)
+
+  visibility String   @default("public") // public | private
+  createdBy  String?
+  title      String?
+
+  createdAt  DateTime @default(now())
+
+  messages   AgentMessage[]
+}
+
+model AgentMessage {
+  id        String   @id @default(cuid())
+  threadId  String
+  repoId    String
+
+  thread    AgentThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  repo      Repo        @relation(fields: [repoId], references: [id], onDelete: Cascade)
+
+  role      String   // user | assistant | system
+  content   String
+  citations Json     @default("[]")
+
+  createdAt DateTime @default(now())
+
+  @@index([threadId])
+  @@index([repoId])
+}
+
+model ContentChunk {
+  id          String   @id @default(cuid())
+  repoId      String
+  repo        Repo     @relation(fields: [repoId], references: [id], onDelete: Cascade)
+
+  contentHash String   // SHA-256 hash for deduplication
+  content     String   // The actual text content
+  filePath    String?  // Optional: path to source file
+  isPublished Boolean  @default(false) // true if from published content
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([repoId])
+  @@index([repoId, isPublished])
+  @@unique([repoId, contentHash])
+}
